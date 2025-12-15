@@ -1,0 +1,11 @@
+name: water-potability-env
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - scikit-learn
+  - pandas
+  - numpy
+  - pip:
+    - mlflow>=2.0.0
