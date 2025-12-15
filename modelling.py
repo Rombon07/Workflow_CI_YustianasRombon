@@ -17,7 +17,7 @@ DAGSHUB_REPO_NAME = 'Eksperimen_SML_YustianasRombon'
 
 print("Menghubungkan ke DagsHub...")
 dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow=True)
-mlflow.set_experiment("Water Potability Experiment")
+mlflow.set_experiment("Water Potability CI Pipeline")
 
 def main():
     # --- 2. Load Data ---

@@ -10,34 +10,34 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    # 1. Persiapan Code
+    # 1. Persiapan Code (Checkout repo dari GitHub)
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # 2. Setup Python
+    # 2. Setup Python environment
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
 
-    # 3. Install Library
+    # 3. Install Library yang dibutuhkan Runner
     - name: Install dependencies
       run: |
         pip install --upgrade pip
         pip install mlflow dagshub pandas numpy scikit-learn seaborn matplotlib
 
     # 4. Training Model & Upload ke DagsHub
-    # Kita menggunakan Env Var agar tidak perlu login manual
+    # PERBAIKAN: Langsung 'mlflow run .' karena file ada di root, tidak perlu 'cd'
     - name: Run MLflow Training
       env:
         MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
-        # Format URI DagsHub biasanya: https://dagshub.com/<username>/<repo>.mlflow
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
       run: |
         mlflow run .
+
     # 5. Ambil Run ID Terbaru (Untuk bikin Docker)
-    # Script ini mencari Run terakhir dari eksperimen "Water Potability CI Pipeline"
+    # Script ini otomatis mencari ID eksperimen terakhir untuk dipackage
     - name: Get Latest Run ID
       env:
         MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
@@ -49,7 +49,7 @@ jobs:
         echo "Detected Run ID: $run_id"
         echo "RUN_ID=$run_id" >> $GITHUB_ENV
 
-    # 6. Login ke Docker Hub
+    # 6. Login ke Docker Hub (Wajib pakai Secrets)
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
@@ -57,7 +57,7 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     # 7. Build Docker Image dari Model MLflow
-    # Ini langkah krusial untuk Bintang 5!
+    # Mengambil model dari Run ID yang didapat di step 5
     - name: Build Docker Image
       env:
         MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
