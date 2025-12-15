@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 1. Aplikasi Model Kita
+  app-inference:
+    build: .
+    ports:
+      - "5000:5000"
+      - "8000:8000"
+    volumes:
+      - ../model_output:/app/model_output # Pastikan folder model_output ada di luar folder ini
+    command: python inference.py
+
+  # 2. Prometheus (Pencatat Data)
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  # 3. Grafana (Dashboard Grafik)
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin # Password login grafana
