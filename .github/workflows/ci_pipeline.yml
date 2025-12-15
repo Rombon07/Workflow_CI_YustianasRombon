@@ -34,8 +34,7 @@ jobs:
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
       run: |
-        mlflow run .
-
+        mlflow run . --env-manager=local
     # 5. Ambil Run ID Terbaru (Untuk bikin Docker)
     # Script ini otomatis mencari ID eksperimen terakhir untuk dipackage
     - name: Get Latest Run ID
