@@ -2,19 +2,20 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 import mlflow
 import mlflow.sklearn
 import dagshub
 import os
-import shutil # Tambahan untuk bersih-bersih folder
+import shutil
 
 # --- 1. KONFIGURASI DAGSHUB ---
 DAGSHUB_USERNAME = 'yustianasrombon7'
 DAGSHUB_REPO_NAME = 'Eksperimen_SML_YustianasRombon'
 
+# Cek Environment (CI/CD vs Lokal)
 if not os.getenv("MLFLOW_TRACKING_URI"):
     print("Running Lokal: Menginisialisasi DagsHub secara interaktif...")
     dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow=True)
@@ -38,24 +39,56 @@ def main():
 
     # --- 3. Training ---
     print("Training Random Forest...")
+    # Menggunakan parameter yang lumayan oke (bisa diganti hasil tuning nanti)
     rf = RandomForestClassifier(random_state=42, n_estimators=50, max_depth=20, min_samples_split=5)
     
-    # Kita skip GridSearch biar cepat debugging (Langsung fit)
-    # Kalau mau GridSearch lagi, silakan uncomment kode lama.
-    # Untuk debugging CI/CD, keep it simple dulu.
-    
-    with mlflow.start_run(run_name="Fixed_CI_Run") as run:
+    with mlflow.start_run(run_name="Complete_CI_Run") as run:
         rf.fit(X_train, y_train)
         y_pred = rf.predict(X_test)
         
+        # --- HITUNG METRICS (DIKEMBALIKAN) ---
         acc = accuracy_score(y_test, y_pred)
+        prec = precision_score(y_test, y_pred)
+        rec = recall_score(y_test, y_pred)
+        f1 = f1_score(y_test, y_pred)
+        
         print(f"Accuracy: {acc}")
+        print(f"Precision: {prec}")
+        print(f"Recall: {rec}")
+        print(f"F1 Score: {f1}")
         
-        mlflow.log_metric("accuracy", acc)
-        mlflow.sklearn.log_model(rf, "model") # Tetap log ke DagsHub (Dashboard)
+        # --- LOG METRICS KE MLFLOW ---
+        mlflow.log_metrics({
+            "accuracy": acc,
+            "precision": prec,
+            "recall": rec,
+            "f1_score": f1
+        })
         
-        # --- PERBAIKAN UTAMA: SIMPAN LOKAL UNTUK DOCKER ---
-        # Hapus folder lama jika ada
+        mlflow.sklearn.log_model(rf, "model")
+        
+        # --- LOG ARTEFAK GAMBAR (DIKEMBALIKAN) ---
+        # 1. Confusion Matrix
+        cm = confusion_matrix(y_test, y_pred)
+        plt.figure(figsize=(6,5))
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+        plt.title('Confusion Matrix')
+        plt.savefig("confusion_matrix.png")
+        mlflow.log_artifact("confusion_matrix.png")
+        
+        # 2. Feature Importance
+        importances = rf.feature_importances_
+        indices = np.argsort(importances)[::-1]
+        features = X.columns
+        plt.figure(figsize=(10,6))
+        plt.title("Feature Importances")
+        plt.bar(range(X.shape[1]), importances[indices], align="center")
+        plt.xticks(range(X.shape[1]), features[indices], rotation=90)
+        plt.tight_layout()
+        plt.savefig("feature_importance.png")
+        mlflow.log_artifact("feature_importance.png")
+
+        # --- SAVE LOKAL UNTUK DOCKER (WAJIB ADA) ---
         if os.path.exists("model_output"):
             shutil.rmtree("model_output")
             
