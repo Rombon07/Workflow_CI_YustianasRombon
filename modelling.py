@@ -10,20 +10,32 @@ import mlflow.sklearn
 import dagshub
 import os
 
-# --- 1. KONFIGURASI DAGSHUB (Wajib untuk Advanced) ---
-# Ganti dengan username dan nama repo DagsHub Anda
-DAGSHUB_USERNAME = 'yustianasrombon7' 
-DAGSHUB_REPO_NAME = 'Eksperimen_SML_YustianasRombon' 
+# --- 1. KONFIGURASI DAGSHUB ---
+DAGSHUB_USERNAME = 'yustianasrombon7'
+DAGSHUB_REPO_NAME = 'Eksperimen_SML_YustianasRombon'
 
-print("Menghubungkan ke DagsHub...")
-dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow=True)
+# PERBAIKAN PENTING:
+# Cek apakah script berjalan di GitHub Actions (CI/CD) atau di Laptop Lokal.
+# Di CI/CD, URI sudah diset lewat file YAML, jadi kita SKIP dagshub.init agar tidak error login.
+if not os.getenv("MLFLOW_TRACKING_URI"):
+    print("Running Lokal: Menginisialisasi DagsHub secara interaktif...")
+    dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow=True)
+else:
+    print("Running di CI/CD: Menggunakan Environment Variables dari GitHub Actions.")
+
 mlflow.set_experiment("Water Potability CI Pipeline")
 
 def main():
     # --- 2. Load Data ---
     print("Memuat data...")
     # Pastikan file csv sudah ada di folder yang sama
-    df = pd.read_csv('water_potability_clean.csv')
+    # Gunakan try-except untuk debugging jika file tidak ditemukan path-nya
+    try:
+        df = pd.read_csv('water_potability_clean.csv')
+    except FileNotFoundError:
+        # Fallback jika running dari root directory lain (opsional)
+        print("File tidak ditemukan di path saat ini, mencoba path absolut...")
+        df = pd.read_csv(os.path.join(os.getcwd(), 'water_potability_clean.csv'))
     
     X = df.drop('Potability', axis=1)
     y = df['Potability']
@@ -35,7 +47,7 @@ def main():
     print("Memulai Hyperparameter Tuning...")
     rf = RandomForestClassifier(random_state=42)
     
-    # Grid sederhana untuk demo (biar tidak terlalu lama runningnya)
+    # Grid sederhana
     param_grid = {
         'n_estimators': [50, 100],
         'max_depth': [10, 20, None],
@@ -79,7 +91,7 @@ def main():
         # Log Model
         mlflow.sklearn.log_model(best_model, "model")
         
-        # --- 5. Custom Artifacts (Syarat Advanced - Wajib 2 Tambahan) ---
+        # --- 5. Custom Artifacts (Syarat Advanced) ---
         
         # Artefak 1: Confusion Matrix Plot
         cm = confusion_matrix(y_test, y_pred)
