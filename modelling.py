@@ -14,9 +14,8 @@ import os
 DAGSHUB_USERNAME = 'yustianasrombon7'
 DAGSHUB_REPO_NAME = 'Eksperimen_SML_YustianasRombon'
 
-# PERBAIKAN PENTING:
-# Cek apakah script berjalan di GitHub Actions (CI/CD) atau di Laptop Lokal.
-# Di CI/CD, URI sudah diset lewat file YAML, jadi kita SKIP dagshub.init agar tidak error login.
+# PENTING: Cek apakah script berjalan di GitHub Actions atau Lokal
+# Jika ada env var MLFLOW_TRACKING_URI, berarti sedang di Server (Skip Login)
 if not os.getenv("MLFLOW_TRACKING_URI"):
     print("Running Lokal: Menginisialisasi DagsHub secara interaktif...")
     dagshub.init(repo_owner=DAGSHUB_USERNAME, repo_name=DAGSHUB_REPO_NAME, mlflow=True)
@@ -28,12 +27,9 @@ mlflow.set_experiment("Water Potability CI Pipeline")
 def main():
     # --- 2. Load Data ---
     print("Memuat data...")
-    # Pastikan file csv sudah ada di folder yang sama
-    # Gunakan try-except untuk debugging jika file tidak ditemukan path-nya
     try:
         df = pd.read_csv('water_potability_clean.csv')
     except FileNotFoundError:
-        # Fallback jika running dari root directory lain (opsional)
         print("File tidak ditemukan di path saat ini, mencoba path absolut...")
         df = pd.read_csv(os.path.join(os.getcwd(), 'water_potability_clean.csv'))
     
@@ -43,11 +39,10 @@ def main():
     # Split Data
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # --- 3. Hyperparameter Tuning (Syarat Skilled) ---
+    # --- 3. Hyperparameter Tuning ---
     print("Memulai Hyperparameter Tuning...")
     rf = RandomForestClassifier(random_state=42)
     
-    # Grid sederhana
     param_grid = {
         'n_estimators': [50, 100],
         'max_depth': [10, 20, None],
@@ -56,8 +51,9 @@ def main():
     
     grid_search = GridSearchCV(estimator=rf, param_grid=param_grid, cv=3, n_jobs=-1, verbose=1)
     
-    # Mulai MLflow Run
-    with mlflow.start_run(run_name="Hyperparameter_Tuning_RF"):
+    # --- 4. Mulai MLflow Run ---
+    # Gunakan 'as run' untuk menangkap metadata run saat ini
+    with mlflow.start_run(run_name="Hyperparameter_Tuning_RF") as run:
         grid_search.fit(X_train, y_train)
         
         best_model = grid_search.best_estimator_
@@ -76,11 +72,9 @@ def main():
         
         print(f"Accuracy: {acc}")
         
-        # --- 4. Logging ke MLflow (Manual Logging) ---
-        # Log Parameter Terbaik
+        # --- 5. Logging ke MLflow ---
         mlflow.log_params(best_params)
         
-        # Log Metrik
         mlflow.log_metrics({
             "accuracy": acc,
             "precision": prec,
@@ -88,23 +82,21 @@ def main():
             "f1_score": f1
         })
         
-        # Log Model
         mlflow.sklearn.log_model(best_model, "model")
         
-        # --- 5. Custom Artifacts (Syarat Advanced) ---
-        
-        # Artefak 1: Confusion Matrix Plot
+        # --- 6. Custom Artifacts ---
+        # Artefak 1: Confusion Matrix
         cm = confusion_matrix(y_test, y_pred)
         plt.figure(figsize=(6,5))
         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
         plt.title('Confusion Matrix')
         plt.ylabel('Actual')
         plt.xlabel('Predicted')
-        plt.savefig("confusion_matrix.png") # Simpan ke file dulu
-        mlflow.log_artifact("confusion_matrix.png") # Upload ke DagsHub
+        plt.savefig("confusion_matrix.png")
+        mlflow.log_artifact("confusion_matrix.png")
         print("Artefak 1: Confusion Matrix terupload.")
         
-        # Artefak 2: Feature Importance Plot
+        # Artefak 2: Feature Importance
         importances = best_model.feature_importances_
         indices = np.argsort(importances)[::-1]
         features = X.columns
@@ -114,11 +106,17 @@ def main():
         plt.bar(range(X.shape[1]), importances[indices], align="center")
         plt.xticks(range(X.shape[1]), features[indices], rotation=90)
         plt.tight_layout()
-        plt.savefig("feature_importance.png") # Simpan ke file dulu
-        mlflow.log_artifact("feature_importance.png") # Upload ke DagsHub
+        plt.savefig("feature_importance.png")
+        mlflow.log_artifact("feature_importance.png")
         print("Artefak 2: Feature Importance terupload.")
         
-        print("Selesai! Cek DagsHub Anda.")
+        # --- 7. SIMPAN RUN ID KE FILE (CRITICAL FOR CI/CD) ---
+        # Ini yang akan dibaca oleh GitHub Actions
+        run_id = run.info.run_id
+        print(f"✅ Run selesai. Saving Run ID: {run_id} to 'run_id.txt'")
+        
+        with open("run_id.txt", "w") as f:
+            f.write(run_id)
 
 if __name__ == "__main__":
     main()
