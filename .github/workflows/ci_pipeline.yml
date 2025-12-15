@@ -35,8 +35,7 @@ jobs:
         # Format URI DagsHub biasanya: https://dagshub.com/<username>/<repo>.mlflow
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
       run: |
-        python modelling.py
-
+        mlflow run .
     # 5. Ambil Run ID Terbaru (Untuk bikin Docker)
     # Script ini mencari Run terakhir dari eksperimen "Water Potability CI Pipeline"
     - name: Get Latest Run ID
