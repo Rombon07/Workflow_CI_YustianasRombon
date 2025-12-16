@@ -14,25 +14,29 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    # 2. Setup Python
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    # 2. BARU: Setup Miniconda (Mengganti Setup Python)
+    - name: Setup Miniconda
+      uses: conda-incubator/setup-miniconda@v3
       with:
-        python-version: '3.9'
+        # Gunakan Python 3.9 seperti sebelumnya
+        python-version: 3.9 
+        # Membuat base environment aktif
+        auto-activate-base: true 
+        # Tambahkan conda-forge channel untuk instalasi tools
+        channels: conda-forge
 
-    # 3. Install Library
-    - name: Install dependencies
+    # 3. Install Global Tools (MLflow & DagsHub)
+    - name: Install Global Tools
       run: |
-        pip install --upgrade pip
-        pip install mlflow dagshub pandas numpy scikit-learn seaborn matplotlib boto3
+        conda install -c conda-forge mlflow dagshub -y
 
-    # 4. Training Model (KOREKSI ERROR: Menggunakan mlflow run langsung)
+    # 4. Training Model
     - name: Run MLflow Training
       env:
         MLFLOW_TRACKING_USERNAME: ${{ secrets.DAGSHUB_USERNAME }}
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
-      # PERBAIKAN: Hapus 'python' di depan agar shell langsung mengeksekusi perintah MLflow
+      # Perintah ini sekarang akan berhasil karena 'activate' sudah tersedia
       run: |
         mlflow run ./MLProject
 
@@ -47,7 +51,6 @@ jobs:
     - name: Build Docker Image
       run: |
         echo "Building Docker Image from local path..."
-        # Pastikan output model disimpan di folder 'model_output' oleh modelling.py
         mlflow models build-docker \
           --model-uri "model_output" \
           --name "${{ secrets.DOCKER_USERNAME }}/water-potability-model:latest"
