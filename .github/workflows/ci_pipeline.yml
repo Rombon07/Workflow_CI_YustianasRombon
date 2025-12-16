@@ -33,7 +33,7 @@ jobs:
         MLFLOW_TRACKING_PASSWORD: ${{ secrets.DAGSHUB_TOKEN }}
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
       run: |
-        python modelling.py
+        python mlflow run ./MLProject
 
     # 5. Login ke Docker Hub
     - name: Login to Docker Hub
