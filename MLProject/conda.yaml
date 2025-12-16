@@ -11,3 +11,4 @@ dependencies:
   - seaborn
   - pip:
     - mlflow>=2.0.0
+    - dagshub
