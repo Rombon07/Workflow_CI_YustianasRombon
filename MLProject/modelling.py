@@ -33,6 +33,7 @@ def main():
     # --- 2. Load Data ---
     print("Memuat data...")
     try:
+        # Coba path relatif dari MLProject
         df = pd.read_csv('water_potability_clean.csv')
     except FileNotFoundError:
         # Cek lokasi file relatif terhadap MLProject
@@ -94,13 +95,17 @@ def main():
     plt.savefig("feature_importance.png")
     mlflow.log_artifact("feature_importance.png")
 
-    # --- SAVE LOKAL UNTUK DOCKER  ---
-    if os.path.exists("model_output"):
-        shutil.rmtree("model_output")
+    # --- SAVE LOKAL UNTUK DOCKER (WAJIB ADA) ---
+    
+    # Definisikan path relatif ke folder model_output di root repository
+    LOCAL_MODEL_PATH = "../model_output"
+    
+    if os.path.exists(LOCAL_MODEL_PATH):
+        shutil.rmtree(LOCAL_MODEL_PATH)
         
-    print("Menyimpan model ke folder lokal 'model_output' untuk Docker...")
-    # Menyimpan model secara lokal harus dilakukan agar langkah Build Docker Image (Step 6) berhasil
-    mlflow.sklearn.save_model(rf, "model_output")
+    print(f"Menyimpan model ke folder lokal '{LOCAL_MODEL_PATH}' untuk Docker...")
+    # KOREKSI KRITIS: Menggunakan '../model_output' agar disimpan di root repository.
+    mlflow.sklearn.save_model(rf, LOCAL_MODEL_PATH)
     
     print("Selesai.")
 
