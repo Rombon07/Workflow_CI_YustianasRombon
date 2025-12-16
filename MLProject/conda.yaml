@@ -7,5 +7,7 @@ dependencies:
   - scikit-learn
   - pandas
   - numpy
+  - matplotlib
+  - seaborn
   - pip:
     - mlflow>=2.0.0
