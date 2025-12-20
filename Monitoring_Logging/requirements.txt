@@ -4,3 +4,4 @@ scikit-learn
 mlflow
 prometheus-client
 gunicorn
+requests

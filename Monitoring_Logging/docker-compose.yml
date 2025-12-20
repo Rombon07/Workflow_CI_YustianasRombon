@@ -1,19 +1,22 @@
 version: '3.8'
 
 services:
-  # 1. Aplikasi Model Kita
+  # 1. Aplikasi Model & Monitoring
   app-inference:
     build: .
+    container_name: ml_service_yusti
     ports:
-      - "5000:5000"
-      - "8000:8000"
+      - "5000:5000" # Port untuk Inference API
+      - "8000:8000" # Port untuk Metrics Prometheus (Wajib ada agar Prometheus bisa baca)
     volumes:
-      - ../model_output:/app/model_output # Pastikan folder model_output ada di luar folder ini
-    command: python inference.py
+      - ../model_output:/app/model_output # Mounting model dari luar
+    # Kita hapus baris 'command:' manual, agar Docker menggunakan CMD dari Dockerfile (yaitu ./start.sh)
+    # command: python inference.py  <-- HAPUS INI
 
   # 2. Prometheus (Pencatat Data)
   prometheus:
     image: prom/prometheus:latest
+    container_name: prometheus_yusti
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -22,7 +25,8 @@ services:
   # 3. Grafana (Dashboard Grafik)
   grafana:
     image: grafana/grafana:latest
+    container_name: grafana_yusti
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin # Password login grafana
+      - GF_SECURITY_ADMIN_PASSWORD=admin
