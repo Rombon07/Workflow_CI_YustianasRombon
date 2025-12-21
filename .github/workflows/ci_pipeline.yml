@@ -37,8 +37,23 @@ jobs:
         MLFLOW_TRACKING_URI: https://dagshub.com/${{ secrets.DAGSHUB_USERNAME }}/Eksperimen_SML_YustianasRombon.mlflow
       shell: bash -l {0} 
       run: |
+        # Pastikan script di dalam MLProject menyimpan output ke folder 'model_output'
         mlflow run ./MLProject
         
+    # --- [NEW] 4b. UPLOAD ARTIFACTS (Syarat Skilled/Advanced) ---
+    # Langkah ini mengambil folder 'model_output' dan gambar .png hasil training
+    # lalu menyimpannya di tab 'Actions' GitHub agar bisa didownload.
+    - name: Upload Training Artifacts
+      uses: actions/upload-artifact@v4
+      if: always() # Tetap jalan meskipun step sebelumnya ada warning
+      with:
+        name: model-training-artifacts
+        path: |
+          model_output/
+          *.png
+        retention-days: 5
+    # -----------------------------------------------------------
+
     # 5. GET LATEST RUN ID 
     # Ini opsional karena Anda menggunakan save_model lokal, tapi kita tambahkan untuk tampilan
     - name: Get latest MLflow run_id
@@ -51,6 +66,7 @@ jobs:
     - name: Build Docker Model
       run: |
         echo "Building Docker Image from local path..."
+        # Menggunakan folder 'model_output' yang sama dengan yang di-upload di step 4b
         mlflow models build-docker \
           --model-uri "model_output" \
           --name "${{ secrets.DOCKER_USERNAME }}/water-potability-model:latest"
